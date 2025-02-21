@@ -11,6 +11,7 @@ RUN --mount=type=cache,target=/go/pkg --mount=type=cache,target=/root/.cache/go-
 FROM alpine:3.16.2 AS base
 RUN apk add --no-cache ca-certificates 
 RUN adduser -DH app
+RUN mkdir /data && chown app:app /data
 USER app
 ENTRYPOINT ["/usr/local/bin/uncloud-dns"]
 CMD ["server"]
