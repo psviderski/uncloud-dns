@@ -1,3 +1,4 @@
-acorn-dns
-acorn.sqlite
+bin
+db.sqlite
 .env
+.idea

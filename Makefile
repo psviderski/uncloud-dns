@@ -1,5 +1,5 @@
 build:
-	CGO_ENABLED=0 go build -o bin/acorn-dns -ldflags "-s -w" .
+	CGO_ENABLED=0 go build -o bin/uncloud-dns -ldflags "-s -w" .
 
 image:
 	docker build .

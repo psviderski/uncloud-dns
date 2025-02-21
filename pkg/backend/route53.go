@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/acorn-io/acorn-dns/pkg/db"
-	"github.com/acorn-io/acorn-dns/pkg/model"
-	"github.com/acorn-io/acorn-dns/pkg/rand"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
+	"github.com/psviderski/uncloud-dns/pkg/db"
+	"github.com/psviderski/uncloud-dns/pkg/model"
+	"github.com/psviderski/uncloud-dns/pkg/rand"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/exp/maps"
@@ -31,19 +31,25 @@ type backend struct {
 	db  db.Database
 }
 
-func NewBackend(zoneID string, recordTTLSecs, purgeIntervalSecs, domainMaxAgeSecs, recordMaxAgeSecs int64, database db.Database) (Backend, error) {
+func NewBackend(
+	zoneID string, recordTTLSecs, purgeIntervalSecs, domainMaxAgeSecs, recordMaxAgeSecs int64, database db.Database,
+) (Backend, error) {
 	s, err := session.NewSession()
 	if err != nil {
 		return &backend{}, err
 	}
 
-	svc := route53.New(s, &aws.Config{
-		MaxRetries: aws.Int(3),
-	})
+	svc := route53.New(
+		s, &aws.Config{
+			MaxRetries: aws.Int(3),
+		},
+	)
 
-	z, err := svc.GetHostedZone(&route53.GetHostedZoneInput{
-		Id: aws.String(zoneID),
-	})
+	z, err := svc.GetHostedZone(
+		&route53.GetHostedZoneInput{
+			Id: aws.String(zoneID),
+		},
+	)
 	if err != nil {
 		return &backend{}, err
 	}
@@ -65,7 +71,9 @@ func (b *backend) GetDomain(domainName string) (db.Domain, error) {
 	return b.db.GetDomain(domainName)
 }
 
-func (b *backend) Renew(domain string, domainID uint, records []model.RecordRequest, version string) ([]model.FQDNTypePair, error) {
+func (b *backend) Renew(
+	domain string, domainID uint, records []model.RecordRequest, version string,
+) ([]model.FQDNTypePair, error) {
 	recordMap := make(map[model.FQDNTypePair]model.RecordRequest)
 	var cleanedRecords []model.FQDNTypePair
 	// remove duplicates and FQDNs that don't belong to this domain
@@ -176,15 +184,19 @@ func (b *backend) doRecordsDelete(records []db.Record) error {
 		}
 		rr := make([]*route53.ResourceRecord, 0)
 		for _, value := range strings.Split(record.Values, ",") {
-			rr = append(rr, &route53.ResourceRecord{
-				Value: aws.String(cleanRecordValue(record.Type, value)),
-			})
+			rr = append(
+				rr, &route53.ResourceRecord{
+					Value: aws.String(cleanRecordValue(record.Type, value)),
+				},
+			)
 		}
 		rrs.ResourceRecords = rr
-		changes = append(changes, &route53.Change{
-			Action:            aws.String("DELETE"),
-			ResourceRecordSet: rrs,
-		})
+		changes = append(
+			changes, &route53.Change{
+				Action:            aws.String("DELETE"),
+				ResourceRecordSet: rrs,
+			},
+		)
 	}
 
 	rrsInput := route53.ChangeResourceRecordSetsInput{
@@ -205,9 +217,11 @@ func (b *backend) CreateRecord(domain string, domainID uint, input model.RecordR
 	rr := make([]*route53.ResourceRecord, 0)
 
 	for _, value := range input.Values {
-		rr = append(rr, &route53.ResourceRecord{
-			Value: aws.String(cleanRecordValue(input.Type, value)),
-		})
+		rr = append(
+			rr, &route53.ResourceRecord{
+				Value: aws.String(cleanRecordValue(input.Type, value)),
+			},
+		)
 	}
 
 	fqdn := input.Name + domain

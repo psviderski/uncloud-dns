@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/acorn-io/acorn-dns/pkg/model"
-	"github.com/acorn-io/acorn-dns/pkg/rand"
 	"github.com/glebarez/sqlite"
+	"github.com/psviderski/uncloud-dns/pkg/model"
+	"github.com/psviderski/uncloud-dns/pkg/rand"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -66,38 +66,40 @@ func New(ctx context.Context, engine string, dsn string, config *gorm.Config) (D
 
 func (d *database) CreateNewSubDomain(tokenHash, domainName string) (Domain, error) {
 	var domain Domain
-	err := d.db.Transaction(func(tx *gorm.DB) error {
-		var slug string
-		for i := 0; i < maxSlugHashTimes; i++ {
-			s := rand.StringWithSmall(slugLength)
-			sql := tx.Where("unique_slug = ?", s).Take(&Domain{})
-			if sql.Error != nil {
-				if sql.Error == gorm.ErrRecordNotFound {
-					slug = s
-					break
+	err := d.db.Transaction(
+		func(tx *gorm.DB) error {
+			var slug string
+			for i := 0; i < maxSlugHashTimes; i++ {
+				s := rand.StringWithSmall(slugLength)
+				sql := tx.Where("unique_slug = ?", s).Take(&Domain{})
+				if sql.Error != nil {
+					if sql.Error == gorm.ErrRecordNotFound {
+						slug = s
+						break
+					}
+					logrus.Warnf("Error while finding unique slug: %v", sql.Error)
 				}
-				logrus.Warnf("Error while finding unique slug: %v", sql.Error)
 			}
-		}
-		if slug == "" {
-			return fmt.Errorf("couldn't generate slug")
-		}
-		subDomain := fmt.Sprintf(".%s.%s", slug, domainName)
+			if slug == "" {
+				return fmt.Errorf("couldn't generate slug")
+			}
+			subDomain := fmt.Sprintf(".%s.%s", slug, domainName)
 
-		domain = Domain{
-			TokenHash:   tokenHash,
-			UniqueSlug:  slug,
-			Domain:      subDomain,
-			LastCheckIn: time.Now(),
-		}
+			domain = Domain{
+				TokenHash:   tokenHash,
+				UniqueSlug:  slug,
+				Domain:      subDomain,
+				LastCheckIn: time.Now(),
+			}
 
-		sql := tx.Create(&domain)
-		if sql.Error != nil {
-			return sql.Error
-		}
+			sql := tx.Create(&domain)
+			if sql.Error != nil {
+				return sql.Error
+			}
 
-		return nil
-	})
+			return nil
+		},
+	)
 
 	return domain, err
 }
@@ -110,57 +112,62 @@ func (d *database) GetDomain(domainName string) (Domain, error) {
 
 func (d *database) Renew(domainID uint, fqdnTypePairs []model.FQDNTypePair, version string) error {
 
-	return d.db.Transaction(func(tx *gorm.DB) error {
-		now := time.Now()
+	return d.db.Transaction(
+		func(tx *gorm.DB) error {
+			now := time.Now()
 
-		// producing separate update queries by type that will look like:
-		// update ... where type = 'A' and fqdn in (...) ...
-		// update ... where type = 'TXT' and fqdn in (...) ...
-		fqdnsByType := make(map[string][]string)
-		for _, pair := range fqdnTypePairs {
-			fqdns := fqdnsByType[pair.Type]
-			fqdns = append(fqdns, pair.FQDN)
-			fqdnsByType[pair.Type] = fqdns
-		}
+			// producing separate update queries by type that will look like:
+			// update ... where type = 'A' and fqdn in (...) ...
+			// update ... where type = 'TXT' and fqdn in (...) ...
+			fqdnsByType := make(map[string][]string)
+			for _, pair := range fqdnTypePairs {
+				fqdns := fqdnsByType[pair.Type]
+				fqdns = append(fqdns, pair.FQDN)
+				fqdnsByType[pair.Type] = fqdns
+			}
 
-		for t, fqdns := range fqdnsByType {
-			sql := tx.Model(&Record{}).Where("type = ? and fqdn IN ? and domain_id = ?", t, fqdns, domainID).
-				Update("last_check_in", now)
+			for t, fqdns := range fqdnsByType {
+				sql := tx.Model(&Record{}).Where("type = ? and fqdn IN ? and domain_id = ?", t, fqdns, domainID).
+					Update("last_check_in", now)
+				if sql.Error != nil {
+					return sql.Error
+				}
+			}
+
+			sql := tx.Model(Domain{Model: gorm.Model{ID: domainID}}).Updates(
+				map[string]interface{}{"last_check_in": now, "version": version},
+			)
 			if sql.Error != nil {
 				return sql.Error
 			}
-		}
 
-		sql := tx.Model(Domain{Model: gorm.Model{ID: domainID}}).Updates(
-			map[string]interface{}{"last_check_in": now, "version": version})
-		if sql.Error != nil {
-			return sql.Error
-		}
-
-		return nil
-	})
+			return nil
+		},
+	)
 }
 
 func (d *database) PurgeOldDomainsAndRecords(domainMaxAgeSeconds, recordMaxAgeSeconds int64) (int64, int64, error) {
 	var domainsDeleted, recordsDeleted int64
-	err := d.db.Transaction(func(tx *gorm.DB) error {
-		lastCheckInDomain := time.Now().Add(-time.Second * time.Duration(domainMaxAgeSeconds))
-		lastCheckInRecord := time.Now().Add(-time.Second * time.Duration(recordMaxAgeSeconds))
-		sql := d.db.Where("last_check_in < ?", lastCheckInDomain).Delete(&Domain{})
-		if sql.Error != nil {
-			return sql.Error
-		}
-		domainsDeleted = sql.RowsAffected
+	err := d.db.Transaction(
+		func(tx *gorm.DB) error {
+			lastCheckInDomain := time.Now().Add(-time.Second * time.Duration(domainMaxAgeSeconds))
+			lastCheckInRecord := time.Now().Add(-time.Second * time.Duration(recordMaxAgeSeconds))
+			sql := d.db.Where("last_check_in < ?", lastCheckInDomain).Delete(&Domain{})
+			if sql.Error != nil {
+				return sql.Error
+			}
+			domainsDeleted = sql.RowsAffected
 
-		// domains is a soft delete, so the RowsAffected is accurate. We don't get that for the records' hard delete.
-		// Need to get a count first
-		sql = d.db.Model(&Record{}).Where("last_check_in < ?", lastCheckInRecord).Count(&recordsDeleted)
-		if sql.Error != nil {
+			// domains is a soft delete, so the RowsAffected is accurate. We don't get that for the records' hard delete.
+			// Need to get a count first
+			sql = d.db.Model(&Record{}).Where("last_check_in < ?", lastCheckInRecord).Count(&recordsDeleted)
+			if sql.Error != nil {
+				return sql.Error
+			}
+			sql = d.db.Where("last_check_in < ?", lastCheckInRecord).Delete(&Record{})
 			return sql.Error
-		}
-		sql = d.db.Where("last_check_in < ?", lastCheckInRecord).Delete(&Record{})
-		return sql.Error
-	})
+		},
+	)
 
 	return domainsDeleted, recordsDeleted, err
 }
@@ -195,7 +202,9 @@ func (d *database) PersistRecord(domainID uint, fqdn, rType string, values []str
 	return sql.Error
 }
 
-func (d *database) GetYoungRecords(maxAgeSeconds int64, fqdnTypePairs map[model.FQDNTypePair]bool) (map[model.FQDNTypePair]Record, error) {
+func (d *database) GetYoungRecords(
+	maxAgeSeconds int64, fqdnTypePairs map[model.FQDNTypePair]bool,
+) (map[model.FQDNTypePair]Record, error) {
 	var fqdns []string
 	for ftp := range fqdnTypePairs {
 		fqdns = append(fqdns, ftp.FQDN)

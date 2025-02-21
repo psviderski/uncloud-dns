@@ -1,8 +1,8 @@
 package backend
 
 import (
-	"github.com/acorn-io/acorn-dns/pkg/db"
-	"github.com/acorn-io/acorn-dns/pkg/model"
+	"github.com/psviderski/uncloud-dns/pkg/db"
+	"github.com/psviderski/uncloud-dns/pkg/model"
 )
 
 type Backend interface {

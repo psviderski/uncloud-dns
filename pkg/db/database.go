@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/acorn-io/acorn-dns/pkg/model"
+	"github.com/psviderski/uncloud-dns/pkg/model"
 )
 
 type Database interface {
@@ -13,5 +13,7 @@ type Database interface {
 	GetDomainRecordsByFQDN(fqdn string, domainID uint) ([]Record, error)
 	DeleteRecords(records []Record) error
 	PurgeOldDomainsAndRecords(maxDomainAgeSeconds, maxRecordAgeSeconds int64) (int64, int64, error)
-	GetYoungRecords(maxAgeSeconds int64, fqdnTypePairs map[model.FQDNTypePair]bool) (map[model.FQDNTypePair]Record, error)
+	GetYoungRecords(maxAgeSeconds int64, fqdnTypePairs map[model.FQDNTypePair]bool) (
+		map[model.FQDNTypePair]Record, error,
+	)
 }

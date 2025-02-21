@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/acorn-io/acorn-dns/pkg/backend"
-	"github.com/acorn-io/acorn-dns/pkg/version"
 	ghandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/psviderski/uncloud-dns/pkg/backend"
+	"github.com/psviderski/uncloud-dns/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 

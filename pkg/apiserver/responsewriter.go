@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/acorn-io/acorn-dns/pkg/model"
+	"github.com/psviderski/uncloud-dns/pkg/model"
 )
 
 func writeErrorResponse(w http.ResponseWriter, httpStatus int, message string, data interface{}) {

@@ -4,8 +4,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/acorn-io/acorn-dns/pkg/commands"
-	"github.com/acorn-io/acorn-dns/pkg/version"
+	"github.com/psviderski/uncloud-dns/pkg/commands"
+	"github.com/psviderski/uncloud-dns/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -28,8 +28,11 @@ func main() {
 	app.Version = version.Get().String()
 	app.Authors = []*cli.Author{
 		{
-			Name:  "The Acorn Labs Dev Team",
-			Email: "engineering@acorn.io",
+			Name:  "Pavel Sviderski (@psviderski)",
+			Email: "me@psviderski.name",
+		},
+		{
+			Name: "Originally created by The Acorn Labs Dev Team",
 		},
 	}
 

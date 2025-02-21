@@ -4,17 +4,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/acorn-io/acorn-dns/pkg/model"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
+	"github.com/psviderski/uncloud-dns/pkg/model"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func (b *backend) StartPurgerDaemon(stopCh <-chan struct{}) {
-	logrus.Infof("starting purge daemon. Purge interval: %v, max domain age: %v, record max age: %v",
-		b.purgeIntervalSeconds, b.domainMaxAgeSeconds, b.recordMaxAgeSeconds)
+	logrus.Infof(
+		"starting purge daemon. Purge interval: %v, max domain age: %v, record max age: %v",
+		b.purgeIntervalSeconds, b.domainMaxAgeSeconds, b.recordMaxAgeSeconds,
+	)
 	wait.JitterUntil(b.purge, time.Duration(b.purgeIntervalSeconds)*time.Second, .002, true, stopCh)
 }
 
@@ -33,7 +35,8 @@ func (b *backend) purge() {
 	}
 
 	recordsToDelete := make(map[model.FQDNTypePair]*route53.ResourceRecordSet)
-	err = b.Svc.ListResourceRecordSetsPages(input,
+	err = b.Svc.ListResourceRecordSetsPages(
+		input,
 		func(page *route53.ListResourceRecordSetsOutput, lastPage bool) bool {
 			currentPageRecords := make(map[model.FQDNTypePair]*route53.ResourceRecordSet)
 			pairsToQuery := make(map[model.FQDNTypePair]bool)
@@ -68,7 +71,8 @@ func (b *backend) purge() {
 			}
 			maps.Copy(recordsToDelete, currentPageRecords)
 			return true
-		})
+		},
+	)
 	if err != nil {
 		logrus.Errorf("Error communicating with Route53: %v", err)
 		return

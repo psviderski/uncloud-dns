@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/acorn-io/acorn-dns/pkg/backend"
-	"github.com/acorn-io/acorn-dns/pkg/model"
-	"github.com/acorn-io/acorn-dns/pkg/version"
 	"github.com/gorilla/mux"
+	"github.com/psviderski/uncloud-dns/pkg/backend"
+	"github.com/psviderski/uncloud-dns/pkg/model"
+	"github.com/psviderski/uncloud-dns/pkg/version"
 )
 
 type handler struct {
@@ -165,7 +165,9 @@ func validateRecord(input model.RecordRequest) error {
 		}
 	case model.RecordTypeCname:
 		if len(input.Values) != 1 {
-			return fmt.Errorf("cname records must contain exactly one value. this contains %v values", len(input.Values))
+			return fmt.Errorf(
+				"cname records must contain exactly one value. this contains %v values", len(input.Values),
+			)
 		}
 	}
 

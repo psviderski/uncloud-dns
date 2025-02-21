@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/acorn-io/acorn-dns/pkg/model"
+	"github.com/psviderski/uncloud-dns/pkg/model"
 	"github.com/sirupsen/logrus"
 )
 
@@ -69,7 +69,9 @@ func loggingMiddleware(logger *logrus.Entry) func(http.Handler) http.Handler {
 			defer func() {
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
-					logger.WithError(err.(error)).WithField("status", http.StatusInternalServerError).Error("recovered error")
+					logger.WithError(err.(error)).WithField(
+						"status", http.StatusInternalServerError,
+					).Error("recovered error")
 					logger.Errorf("Stack %s", debug.Stack())
 				}
 			}()
@@ -79,16 +81,18 @@ func loggingMiddleware(logger *logrus.Entry) func(http.Handler) http.Handler {
 			next.ServeHTTP(wrapped, r)
 
 			if !strings.Contains(r.URL.EscapedPath(), "healthz") {
-				requestLogger := logger.WithFields(logrus.Fields{
-					"status":   wrapped.status,
-					"method":   r.Method,
-					"path":     r.URL.EscapedPath(),
-					"duration": time.Since(start),
-				})
+				requestLogger := logger.WithFields(
+					logrus.Fields{
+						"status":   wrapped.status,
+						"method":   r.Method,
+						"path":     r.URL.EscapedPath(),
+						"duration": time.Since(start),
+					},
+				)
 
 				msg := fmt.Sprintf("handled: %d", wrapped.status)
 				if wrapped.status >= 400 {
-					requestLogger.WithFields(logrus.Fields{"error": asErrorResponseModel(wrapped.body).Message}).Errorf(msg)
+					requestLogger.WithFields(logrus.Fields{"error": asErrorResponseModel(wrapped.body).Message}).Error(msg)
 				} else {
 					requestLogger.Debug(msg)
 				}
