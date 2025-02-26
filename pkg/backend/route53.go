@@ -224,7 +224,7 @@ func (b *backend) CreateRecord(domain string, domainID uint, input model.RecordR
 		)
 	}
 
-	fqdn := input.Name + domain
+	fqdn := fmt.Sprintf("%s.%s", input.Name, domain)
 	rrs := &route53.ResourceRecordSet{
 		Type:            aws.String(input.Type),
 		Name:            aws.String(fqdn),

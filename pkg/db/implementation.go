@@ -83,7 +83,7 @@ func (d *database) CreateNewSubDomain(tokenHash, domainName string) (Domain, err
 			if slug == "" {
 				return fmt.Errorf("couldn't generate slug")
 			}
-			subDomain := fmt.Sprintf(".%s.%s", slug, domainName)
+			subDomain := fmt.Sprintf("%s.%s", slug, domainName)
 
 			domain = Domain{
 				TokenHash:   tokenHash,
