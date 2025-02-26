@@ -13,6 +13,10 @@ import (
 )
 
 func (b *backend) StartPurgerDaemon(stopCh <-chan struct{}) {
+	if b.purgeIntervalSeconds == 0 {
+		logrus.Infof("Skipping purge daemon (purge interval is set to 0)")
+		return
+	}
 	logrus.Infof(
 		"starting purge daemon. Purge interval: %v, max domain age: %v, record max age: %v",
 		b.purgeIntervalSeconds, b.domainMaxAgeSeconds, b.recordMaxAgeSeconds,

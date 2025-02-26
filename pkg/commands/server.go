@@ -115,7 +115,7 @@ func serverCommand() *cli.Command {
 		},
 		&cli.Int64Flag{
 			Name:    "purge-interval-seconds",
-			Usage:   "How often to run the domain and record purge daemon. Default 86,400 (1 day)",
+			Usage:   "How often to run the domain and record purge daemon. Set to 0 to disable. Default 86,400 (1 day)",
 			EnvVars: []string{"PURGE_INTERVAL_SECONDS"},
 			Value:   86400,
 		},
