@@ -1,4 +1,4 @@
-IMAGE ?= ghcr.io/psviderski/uncloud-dns:dev
+IMAGE ?= ghcr.io/psviderski/uncloud-dns
 
 build:
 	CGO_ENABLED=0 go build -o bin/uncloud-dns -ldflags "-s -w" .
@@ -6,8 +6,8 @@ build:
 image:
 	docker build -t "$(IMAGE)" .
 
-image-push: image
-	docker push "$(IMAGE)"
+image-push:
+	docker buildx build --push --platform linux/amd64,linux/arm64 --tag "$(TAG)" -t "$(IMAGE):$(TAG)" .
 
 setup-ci-env:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.52.2
