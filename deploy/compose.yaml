@@ -1,6 +1,6 @@
 services:
   uncloud-dns:
-    image: ghcr.io/psviderski/uncloud-dns:dev
+    image: ghcr.io/psviderski/uncloud-dns:v0.1.0
     environment:
       DB_SQLITE_DSN: file:/data/db.sqlite?_pragma=foreign_keys(1)
       LOGLEVEL: debug
