@@ -12,6 +12,7 @@ services:
       - dns.uncloud.run:4315/https
     volumes:
       - uncloud-dns:/data
+    x-machines: uc-prod-us2
 
 volumes:
   uncloud-dns:
