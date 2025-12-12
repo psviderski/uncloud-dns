@@ -1,6 +1,6 @@
 # Uncloud DNS
 
-FQDNs on demand. Powering cluster.uncloud.run subdomains.
+FQDNs on demand. Powering `xxxxxx.uncld.dev` subdomains.
 
 Will create A, AAAA, CNAME, and TXT records in Route53.
 
