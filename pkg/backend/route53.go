@@ -22,6 +22,8 @@ const (
 type backend struct {
 	baseDomain           string
 	ZoneID               string
+	legacyBaseDomain     string
+	legacyZoneID         string
 	recordTTLSeconds     int64
 	purgeIntervalSeconds int64
 	domainMaxAgeSeconds  int64
@@ -32,7 +34,8 @@ type backend struct {
 }
 
 func NewBackend(
-	zoneID string, recordTTLSecs, purgeIntervalSecs, domainMaxAgeSecs, recordMaxAgeSecs int64, database db.Database,
+	zoneID, legacyZoneID string, recordTTLSecs, purgeIntervalSecs, domainMaxAgeSecs, recordMaxAgeSecs int64,
+	database db.Database,
 ) (Backend, error) {
 	s, err := session.NewSession()
 	if err != nil {
@@ -54,16 +57,42 @@ func NewBackend(
 		return &backend{}, err
 	}
 
+	// Initialise the legacy zone if provided.
+	var legacyBaseDomain, normalizedLegacyZoneID string
+	if legacyZoneID != "" {
+		lz, err := svc.GetHostedZone(
+			&route53.GetHostedZoneInput{
+				Id: aws.String(legacyZoneID),
+			},
+		)
+		if err != nil {
+			return &backend{}, err
+		}
+		legacyBaseDomain = strings.TrimSuffix(aws.StringValue(lz.HostedZone.Name), ".")
+		normalizedLegacyZoneID = aws.StringValue(lz.HostedZone.Id)
+	}
+
 	return &backend{
 		db:                   database,
 		baseDomain:           strings.TrimSuffix(aws.StringValue(z.HostedZone.Name), "."),
 		ZoneID:               aws.StringValue(z.HostedZone.Id),
+		legacyBaseDomain:     legacyBaseDomain,
+		legacyZoneID:         normalizedLegacyZoneID,
 		Svc:                  svc,
 		recordTTLSeconds:     recordTTLSecs,
 		purgeIntervalSeconds: purgeIntervalSecs,
 		domainMaxAgeSeconds:  domainMaxAgeSecs,
 		recordMaxAgeSeconds:  recordMaxAgeSecs,
 	}, nil
+}
+
+// zoneForDomain returns the zone ID for operations on the given domain.
+// If the domain belongs to the legacy zone, it returns the legacy zone ID.
+func (b *backend) zoneForDomain(domain string) string {
+	if b.legacyZoneID != "" && strings.HasSuffix(domain, b.legacyBaseDomain) {
+		return b.legacyZoneID
+	}
+	return b.ZoneID
 }
 
 func (b *backend) GetDomain(domainName string) (db.Domain, error) {
@@ -175,7 +204,8 @@ func (b *backend) doRecordsDelete(records []db.Record) error {
 		return nil
 	}
 
-	changes := make([]*route53.Change, 0)
+	// Group records by zone based on their FQDN.
+	changesByZone := make(map[string][]*route53.Change)
 	for _, record := range records {
 		rrs := &route53.ResourceRecordSet{
 			Type: aws.String(record.Type),
@@ -191,23 +221,26 @@ func (b *backend) doRecordsDelete(records []db.Record) error {
 			)
 		}
 		rrs.ResourceRecords = rr
-		changes = append(
-			changes, &route53.Change{
-				Action:            aws.String("DELETE"),
-				ResourceRecordSet: rrs,
+
+		zoneID := b.zoneForDomain(record.FQDN)
+		changesByZone[zoneID] = append(changesByZone[zoneID], &route53.Change{
+			Action:            aws.String("DELETE"),
+			ResourceRecordSet: rrs,
+		})
+	}
+
+	// Delete records from each zone.
+	for zoneID, changes := range changesByZone {
+		rrsInput := route53.ChangeResourceRecordSetsInput{
+			HostedZoneId: aws.String(zoneID),
+			ChangeBatch: &route53.ChangeBatch{
+				Changes: changes,
 			},
-		)
-	}
+		}
 
-	rrsInput := route53.ChangeResourceRecordSetsInput{
-		HostedZoneId: aws.String(b.ZoneID),
-		ChangeBatch: &route53.ChangeBatch{
-			Changes: changes,
-		},
-	}
-
-	if _, err := b.Svc.ChangeResourceRecordSets(&rrsInput); err != nil {
-		return err
+		if _, err := b.Svc.ChangeResourceRecordSets(&rrsInput); err != nil {
+			return err
+		}
 	}
 
 	return b.db.DeleteRecords(records)
@@ -233,7 +266,7 @@ func (b *backend) CreateRecord(domain string, domainID uint, input model.RecordR
 	}
 
 	rrsInput := route53.ChangeResourceRecordSetsInput{
-		HostedZoneId: aws.String(b.ZoneID),
+		HostedZoneId: aws.String(b.zoneForDomain(domain)),
 		ChangeBatch: &route53.ChangeBatch{
 			Changes: []*route53.Change{
 				{

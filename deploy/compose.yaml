@@ -1,11 +1,13 @@
 services:
   uncloud-dns:
-    image: ghcr.io/psviderski/uncloud-dns:v0.1.0
+    build: ..
+    image: ghcr.io/psviderski/uncloud-dns
     environment:
       DB_SQLITE_DSN: file:/data/db.sqlite?_pragma=foreign_keys(1)
       LOGLEVEL: debug
       PURGE_INTERVAL_SECONDS: 0
-      ROUTE53_ZONE_ID: Z03945543HGEBIHIT6BPN
+      ROUTE53_ZONE_ID: Z02978313T3PRGPD375O1
+      LEGACY_ROUTE53_ZONE_ID: Z03945543HGEBIHIT6BPN
     env_file:
       - .env.secrets
     x-ports:

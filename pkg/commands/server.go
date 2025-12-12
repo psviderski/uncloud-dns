@@ -37,6 +37,7 @@ func (s *apiServerCommand) Execute(c *cli.Context) error {
 
 	back, err := backend.NewBackend(
 		c.String("route53-zone-id"),
+		c.String("legacy-route53-zone-id"),
 		c.Int64("route53-record-ttl-seconds"),
 		c.Int64("purge-interval-seconds"),
 		c.Int64("domain-max-age-seconds"),
@@ -106,6 +107,12 @@ func serverCommand() *cli.Command {
 			Usage:    "AWS Route53 Zone ID where records will be created",
 			EnvVars:  []string{"ROUTE53_ZONE_ID"},
 			Required: true,
+		},
+		// TODO: remove once all clusters have migrated to the new domain.
+		&cli.StringFlag{
+			Name:    "legacy-route53-zone-id",
+			Usage:   "AWS Route53 Zone ID for the legacy domain to seamlessly migrate from",
+			EnvVars: []string{"LEGACY_ROUTE53_ZONE_ID"},
 		},
 		&cli.Int64Flag{
 			Name:    "route53-record-ttl-seconds",
