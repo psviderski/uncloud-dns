@@ -1,6 +1,9 @@
 services:
   uncloud-dns:
-    build: ..
+    build:
+      context: ..
+      platforms:
+        - linux/amd64
     image: ghcr.io/psviderski/uncloud-dns
     environment:
       DB_SQLITE_DSN: file:/data/db.sqlite?_pragma=foreign_keys(1)
